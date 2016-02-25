@@ -9,6 +9,6 @@ import scrapy
 
 
 class FictionItem(scrapy.Item):
-    # define the fields for your item here like:
-    # name = scrapy.Field()
-    pass
+    url = scrapy.Field()
+    title = scrapy.Field()  # 小说名
+    content = scrapy.Field()  # 小说内容

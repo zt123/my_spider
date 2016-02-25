@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Scrapy settings for spider20160224 project
+# Scrapy settings for fiction project
 #
 # For simplicity, this file contains only settings considered important or
 # commonly used. You can find more settings consulting the documentation:
@@ -9,14 +9,14 @@
 #     http://scrapy.readthedocs.org/en/latest/topics/downloader-middleware.html
 #     http://scrapy.readthedocs.org/en/latest/topics/spider-middleware.html
 
-BOT_NAME = 'spider20160224'
+BOT_NAME = 'fiction'
 
-SPIDER_MODULES = ['spider20160224.spiders']
-NEWSPIDER_MODULE = 'spider20160224.spiders'
+SPIDER_MODULES = ['fiction.spiders']
+NEWSPIDER_MODULE = 'fiction.spiders'
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
-#USER_AGENT = 'spider20160224 (+http://www.yourdomain.com)'
+#USER_AGENT = 'fiction (+http://www.yourdomain.com)'
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
 #CONCURRENT_REQUESTS=32
