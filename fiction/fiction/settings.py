@@ -20,7 +20,7 @@ NEWSPIDER_MODULE = 'fiction.spiders'
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
 # 爬虫可同时响应的请求个数
-#CONCURRENT_REQUESTS=32
+CONCURRENT_REQUESTS=32
 
 # Configure a delay for requests for the same website (default: 0)
 # 爬取页面间隔时间
@@ -50,9 +50,11 @@ NEWSPIDER_MODULE = 'fiction.spiders'
 
 # Enable or disable downloader middlewares
 # See http://scrapy.readthedocs.org/en/latest/topics/downloader-middleware.html
-#DOWNLOADER_MIDDLEWARES = {
-#    'fiction.middlewares.MyCustomDownloaderMiddleware': 543,
-#}
+# 设置代理
+DOWNLOADER_MIDDLEWARES = {
+    'scrapy.contrib.downloadermiddleware.httpproxy.HttpProxyMiddleware': 110,
+   'fiction.middlewares.ProxyMiddleware': 100,
+}
 
 # Enable or disable extensions
 # See http://scrapy.readthedocs.org/en/latest/topics/extensions.html
@@ -84,3 +86,30 @@ ITEM_PIPELINES = {
 #HTTPCACHE_DIR='httpcache'
 #HTTPCACHE_IGNORE_HTTP_CODES=[]
 #HTTPCACHE_STORAGE='scrapy.extensions.httpcache.FilesystemCacheStorage'
+
+# 代理IP
+PROXIES = [
+  {'ip_port': '117.136.234.8:83'},
+  {'ip_port': '223.99.254.99:80'},
+  {'ip_port': '117.177.250.155:86'},
+  {'ip_port': '61.154.14.237:8086'},
+  {'ip_port': '120.52.73.27:80'},
+  {'ip_port': '124.160.194.72:80'},
+  {'ip_port': '115.29.202.148:8888'},
+  {'ip_port': '117.177.250.147:82'},
+  {'ip_port': '117.177.250.152:82'},
+  {'ip_port': '120.198.231.22:80'},
+  {'ip_port': '120.52.73.27:80'},
+  {'ip_port': '182.254.153.54:8080'},
+  {'ip_port': '117.177.250.155:80'},
+  {'ip_port': '117.177.250.149:8080'},
+  {'ip_port': '122.96.59.107:843'},
+  {'ip_port': '117.177.250.152:82'},
+  {'ip_port': '59.78.160.246:8080'},
+  {'ip_port': '117.177.250.155:81'},
+  {'ip_port': '122.96.59.104:81'},
+  {'ip_port': '183.239.167.122:8080'},
+  {'ip_port': '183.207.228.44:80'},
+  {'ip_port': '122.96.59.107:843'},
+  {'ip_port': '120.52.73.27:8080'},
+]
