@@ -5,11 +5,14 @@
 @copyright zhangt
 '''
 import scrapy
+import sys
+import os
+import time
 from fiction.items import FictionItem
 
 class HongXiuSpider(scrapy.Spider):
     name = 'huanxia'
-    CONTENT = ''
+    content = ''
     start_urls = [
         'http://www.hongxiu.com/huanxia/'
     ]
@@ -31,6 +34,7 @@ class HongXiuSpider(scrapy.Spider):
             request = scrapy.Request(url, self.parse_fiction_detail)
             yield request
 
+
         # 分页
         next_li = response.css('#htmlPage > li')[-2].css('a::attr(href)')
         if len(next_li.extract()) > 0:
@@ -42,43 +46,61 @@ class HongXiuSpider(scrapy.Spider):
         '''
         小说详情
         '''
-        item = FictionItem()
-        item['url'] = response.url
         sel = response.css('#htmlSai2014 h1 a')
         if len(sel) == 0:
             return
         else:
-            item['title'] = u'《' + sel.css('::text').extract()[0] + u'》'
-            # yield item
+            text_name = u'《' + sel.css('::text').extract()[0] + u'》'
             content_url = response.css('#htmldiyizh::attr(href)').extract()[0]
             request = scrapy.Request(response.urljoin(content_url), self.parse_fiction_content)
-            request.meta['item'] = item
+            request.meta['text_name'] = text_name
             yield request
 
     def parse_fiction_content(self, response):
         '''
         小说内容
         '''
-        global CONTENT
-        print CONTENT
-        # content = ''
-        item = response.meta['item']
         # 小说内容
-        text = response.css('#htmlContent > em')
-        if len(text) > 1:
-            p_text = text[1].css('p::text').extract()
+        text_1 = response.css('#htmlContent > em')
+        text_2 = response.css('#htmlContent > div')
+        text_3 = response.css('#htmlContent > span')
+        text_4 = response.css('#htmlContent > label')
+        text_5 = response.css('#htmlContent > font')
+        fp = open('./fiction/txt/' + response.meta['text_name'] + '.txt', 'a')
+
+        if len(text_1) > 1:
+            p_text = text_1[1].css('p::text').extract()
             for p in p_text:
-                content += p
+                p = p + "\n"
+                fp.write(p)
+        elif len(text_2) > 1:
+            p_text = text_2[1].css('p::text').extract()
+            for p in p_text:
+                p = p + "\n"
+                fp.write(p)
+        elif len(text_3) > 1:
+            p_text = text_3[1].css('p::text').extract()
+            for p in p_text:
+                p = p + "\n"
+                fp.write(p)
+        elif len(text_4) > 1:
+            p_text = text_4[1].css('p::text').extract()
+            for p in p_text:
+                p = p + "\n"
+                fp.write(p)
+        elif len(text_5) > 1:
+            p_text = text_5[1].css('p::text').extract()
+            for p in p_text:
+                p = p + "\n"
+                fp.write(p)
 
         # 下一章
-        next_url = response.css('.pb_cen > a::attr(href)').extract()[0]
-        if next_url.find('more') > -1:
-            # 判断是否是最后一张
-            request = scrapy.Request(response.urljoin(next_url), self.parse_fiction_content)
-            request.meta['item'] = item
-            yield request
-        else:
-            print content
-            # item['content'] = content
-            # yield item
-        
+        if len(response.css('.pb_cen > a::attr(href)')) > 0:
+            next_url = response.css('.pb_cen > a::attr(href)').extract()[0]
+            if next_url.find('more') == -1:
+                # 判断是否是最后一章
+                request = scrapy.Request(response.urljoin(next_url), self.parse_fiction_content)
+                request.meta['text_name'] = response.meta['text_name']
+                yield request
+            else:
+                fp.close()
