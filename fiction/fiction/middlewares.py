@@ -1,36 +1,19 @@
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
 '''
-设置代理文件
+@title 设置代理文件
+@author zhangt <zhangt@wanthings.com>
+@copyright wanthings.com
 '''
-# # import time
-# import random
-# import base64
-# from settings import PROXIES
-
-# class ProxyMiddleware(object):
-#     def process_request(self, request, spider):
-#         # 随机选取代理
-#         proxy = random.choice(PROXIES)
-#         # print type(proxy)
-#         # print proxy['ip_port']
-#         # time.sleep(10)
-#         # 设置代理
-#         request.meta['proxy'] = "http://%s" %(proxy['ip_port'])
-#         print "**************ProxyMiddleware have pass************" + proxy['ip_port']
-#         # 设置代理验证基本验证
-#         # proxy_user_pass = "USERNAME:PASSWORD"
-#         # encoded_user_pass = base64.encodestring(proxy_user_pass)
-#         # request.headers['Proxy-Authorization'] = 'Basic ' + encoded_user_pass
-
 import time
-# import logging
-from twisted.web._newclient import ResponseNeverReceived
-from twisted.internet.error import TimeoutError, ConnectionRefusedError, ConnectError
+from twisted.web._newclient import ResponseNeverReceived, ResponseFailed
+from twisted.internet.error import TimeoutError, ConnectionRefusedError, ConnectError, TCPTimedOutError
+from FieldGenerator.myssdb import myssdb
 from datetime import datetime, timedelta
 
 class ProxyMiddleware(object):
     # 遇到这些类型的错误直接当做代理不可用处理掉, 不再传给retrymiddleware
-    DONT_RETRY_ERRORS = (TimeoutError, ConnectionRefusedError, ResponseNeverReceived, ConnectError, ValueError)
+    DONT_RETRY_ERRORS = (TimeoutError, ConnectionRefusedError, ResponseNeverReceived, ConnectError, ResponseFailed, TCPTimedOutError, ValueError)
 
     def __init__(self):
         # 保存上次不用代理的时间点
@@ -39,25 +22,17 @@ class ProxyMiddleware(object):
         # self.proxyes = [{"proxy": None, "valid":True}]
         self.proxyes = []
         # 一个代理池的代理数量
-        self.proxy_nums = 5
+        self.proxy_nums = 3
         # 获取代理池的次数
         self.times = 1
         # 代理在代理池中的位置下标,初始时使用0号代理
         self.proxy_index = 0
-        # 存放代理文件
-        self.proxy_file = "./china/proxyes.txt"
-        # 从文件读取初始代理
-        with open(self.proxy_file, "r") as fp:
-            lines = fp.readlines()
-            for line in lines[0:self.proxy_nums]:
-                if not line:
-                    continue
-                line = line.split('\'')[1]
-                proxy = {"proxy": "http://" + line,
-                        "valid": True,}
-                self.proxyes.append(proxy)
-        # print self.proxyes[0]['proxy']
-        # time.sleep(100)
+        # 从数据库中获得可用代理,作为初始代理
+        for i in range(0, self.proxy_nums):
+            ip_port = self.get('proxy_http')
+            proxy = {"proxy": "http://" + ip_port,
+                    "valid": True}
+            self.proxyes.append(proxy)
 
     def process_request(self, request, spider):
         '''
@@ -74,8 +49,10 @@ class ProxyMiddleware(object):
         '''
         检查response, 根据内容切换到下一个proxy, 或者禁用proxy, 或者什么都不做
         '''
-        if response.status in [500, 502, 503, 504, 520,407, 404, 403, 400, 401, 409, 301, 302]:
+        # print u'地址状态:' + str(response.status) + u'当前Ip下标:' + str(request.meta['proxy_index'])
+        if response.status in [502, 503, 504, 520]:
             self.invalid_proxy(request.meta['proxy_index'])
+            print '++++++response+++++' + response.url + '+++++'
             new_request = request.copy()
             new_request.dont_filter = True
             return new_request
@@ -86,9 +63,11 @@ class ProxyMiddleware(object):
         '''
         处理由于使用代理导致的连接异常
         '''
+        # print u'异常:' + exception
         request_proxy_index = request.meta["proxy_index"]
         if isinstance(exception, self.DONT_RETRY_ERRORS):
             self.invalid_proxy(request_proxy_index)     # 禁用并切换代理
+            # print u'代理异常-----exception----' + request.url
             new_request = request.copy()
             new_request.dont_filter = True
             return new_request
@@ -102,8 +81,6 @@ class ProxyMiddleware(object):
             self.proxy_index = 0
             self.proxyes = []
             self.fetch_valid_proxy()      # 获取有效代理
-            # print self.proxyes
-            # time.sleep(100)
 
         proxy = self.proxyes[self.proxy_index]
         if not proxy['valid']:
@@ -115,6 +92,7 @@ class ProxyMiddleware(object):
 
         if proxy['proxy']:
             request.meta['proxy'] = proxy['proxy']
+            print  '*****request.url:%s' %(request.url)
             print  '********uesful_proxy_nums:%d********now_proxy:%s' %(nums, proxy['proxy']) 
         elif 'proxy' in request.meta.keys():    # 不用代理的时候，就删除代理
             del request.meta['proxy']
@@ -134,7 +112,7 @@ class ProxyMiddleware(object):
         if i == self.proxy_nums:    # 若循环完代理池都没有可用的，则重置代理池
             self.proxy_index = 0
             self.proxyes = []
-            self.fetch_valid_proxy      # 获取有效代理
+            self.fetch_valid_proxy()      # 获取有效代理
 
     def invalid_proxy(self, index):
         '''
@@ -160,13 +138,37 @@ class ProxyMiddleware(object):
         '''
         获取有效代理
         '''
-        with open(self.proxy_file, "r") as fp:
-            lines = fp.readlines()
-            for line in lines[self.times*self.proxy_nums:self.proxy_nums*(self.times + 1)]:
-                if not line:
-                    continue
-                line = line.split('\'')[1]
-                proxy = {"proxy": "http://" + line,
-                        "valid": True,}
+        for i in range(0, self.proxy_nums):
+            ip_port = self.get('proxy_http')
+            if ip_port:
+                proxy = {"proxy": "http://" + ip_port,
+                        "valid": True}
                 self.proxyes.append(proxy)
-        self.times += 1
+            else:
+                # 若代理不够，则不使用代理
+                self.proxyes = [{"proxy": None, "valid": True}]
+
+    def get(self, field):
+        ssdb = myssdb(table=field, host='125.65.43.196', port=54321)
+        return ssdb.get()
+
+
+# # import time
+# import random
+# import base64
+# # from settings import PROXIES
+
+# class ProxyMiddleware(object):
+#     def process_request(self, request, spider):
+#         # 随机选取代理
+#         # proxy = random.choice(PROXIES)
+#         # print type(proxy)
+#         # print proxy['ip_port']
+#         # time.sleep(10)
+#         # 设置代理
+#         request.meta['proxy'] = "http://115.223.237.72:9000" 
+#         print "**************ProxyMiddleware have pass************"
+#         # 设置代理验证基本验证
+#         # proxy_user_pass = "USERNAME:PASSWORD"
+#         # encoded_user_pass = base64.encodestring(proxy_user_pass)
+#         # request.headers['Proxy-Authorization'] = 'Basic ' + encoded_user_pass
